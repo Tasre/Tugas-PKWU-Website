@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 185 100% 50%;
+    --primary-foreground: 220 20% 6%;
+
+    --secondary: 280 100% 60%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 185 100% 50%;
+    --accent-foreground: 220 20% 6%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 185 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Custom gaming tokens */
+    --neon-cyan: 185 100% 50%;
+    --neon-magenta: 280 100% 60%;
+    --neon-purple: 260 100% 65%;
+    --dark-surface: 220 18% 8%;
+    --darker-surface: 220 20% 4%;
+
+    --gradient-neon: linear-gradient(135deg, hsl(var(--neon-cyan)), hsl(var(--neon-magenta)));
+    --gradient-card: linear-gradient(180deg, hsl(220 18% 12%), hsl(220 18% 8%));
+    --glow-cyan: 0 0 30px hsl(var(--neon-cyan) / 0.5);
+    --glow-magenta: 0 0 30px hsl(var(--neon-magenta) / 0.5);
+
+    --font-display: 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    /* Hide scrollbar for all elements */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-neon);
+  }
+
+  .glow-cyan {
+    box-shadow: var(--glow-cyan);
+  }
+
+  .glow-magenta {
+    box-shadow: var(--glow-magenta);
+  }
+
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+
+  .neon-border {
+    @apply border border-primary/50;
+    box-shadow: inset 0 0 20px hsl(var(--neon-cyan) / 0.1), var(--glow-cyan);
+  }
+
+  @keyframes chat-pulse {
+    0%, 100% {
+      box-shadow: 0 0 5px hsl(var(--neon-cyan) / 0.2);
+      border-color: hsl(var(--neon-cyan) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px hsl(var(--neon-cyan) / 0.4);
+      border-color: hsl(var(--neon-cyan) / 0.6);
+    }
+  }
+
+  .animate-chat-pulse {
+    animation: chat-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes dispute-pulse {
+    0%, 100% {
+      box-shadow: 0 0 5px hsl(var(--destructive) / 0.2);
+      border-color: hsl(var(--destructive) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px hsl(var(--destructive) / 0.4);
+      border-color: hsl(var(--destructive) / 0.6);
+    }
+  }
+
+  .animate-dispute-pulse {
+    animation: dispute-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Utility class just in case */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

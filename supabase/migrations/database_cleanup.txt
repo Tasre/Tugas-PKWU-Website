@@ -1,0 +1,47 @@
+-- SURGICAL DATABASE CLEANUP
+-- PRESERVES: Profiles (Accounts), Roles, Supported Games, Game Tags, Audit Logs, FAQ items, Help articles, and News Posts.
+-- REMOVES: All test orders, messages, listings, favorites, preferences, follows, subscriptions, bans, disputes, and comments.
+
+-- 1. Disable triggers temporarily to ensure a clean sweep and avoid recursive logic firing
+SET session_replication_role = 'replica';
+
+-- 2. TRUNCATE Transactional and Test Data tables
+-- We use CASCADE to handle foreign key dependencies automatically
+-- RESTART IDENTITY resets any auto-incrementing IDs back to 1
+TRUNCATE TABLE 
+    public.order_messages,
+    public.orders,
+    public.listings,
+    public.listing_favorites,
+    public.listing_takedown_messages,
+    public.listing_takedowns,
+    public.notifications,
+    public.post_likes,
+    public.post_dislikes,
+    public.post_comments,
+    public.post_takedown_messages,
+    public.post_takedowns,
+    public.reviews,
+    public.support_tickets,
+    public.ticket_replies,
+    public.user_bans,
+    public.user_follows,
+    public.user_subscriptions,
+    public.buyer_preferences
+RESTART IDENTITY CASCADE;
+
+-- 3. Reset News Post social counters back to absolute zero
+-- Since the interaction records were truncated, we must clear the cached totals on the posts
+UPDATE public.posts 
+SET likes_count = 0, 
+    dislikes_count = 0;
+
+-- 4. Re-enable triggers for normal platform operation
+SET session_replication_role = 'origin';
+
+-- 5. FINAL HARD SYNC: Double-check zero integrity
+-- This ensures that even if manual records existed, the counters perfectly match the empty tables
+UPDATE public.posts p
+SET 
+  likes_count = (SELECT count(*) FROM public.post_likes l WHERE l.post_id = p.id),
+  dislikes_count = (SELECT count(*) FROM public.post_dislikes d WHERE d.post_id = p.id);
