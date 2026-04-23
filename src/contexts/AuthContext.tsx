@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const initializing = React.useRef(false);
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRole = React.useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from("user_roles")
@@ -38,34 +38,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", userId) 
         .maybeSingle();
       
+      let newRole = "user";
       if (error) {
         console.error("Error fetching user role:", error);
-        setRole("user");
       } else if (data) {
-        setRole(data.role);
-      } else {
-        setRole("user");
+        newRole = data.role;
       }
+
+      setRole((prev) => prev !== newRole ? newRole : prev);
     } catch (err) {
       console.error("Exception in fetchUserRole:", err);
-      setRole("user");
+      setRole((prev) => prev !== "user" ? "user" : prev);
     }
-  };
+  }, []);
 
-  const initializeAuth = async () => {
+  const initializeAuth = React.useCallback(async () => {
     if (initializing.current) return;
     initializing.current = true;
     
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       if (error) throw error;
       
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchUserRole(session.user.id);
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+        await fetchUserRole(currentSession.user.id);
       } else {
+        setSession(null);
+        setUser(null);
         setRole(null);
       }
     } catch (err) {
@@ -74,13 +75,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       initializing.current = false;
     }
-  };
+  }, [fetchUserRole]);
 
-  const refreshRole = async () => {
+  const refreshRole = React.useCallback(async () => {
     if (user) {
       await fetchUserRole(user.id);
     }
-  };
+  }, [user, fetchUserRole]);
 
   const signOut = async (broadcast = true) => {
     try {
@@ -140,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authChannel?.removeEventListener("message", handleMessage);
       window.removeEventListener("storage", handleStorage);
     };
-  }, [queryClient]);
+  }, [queryClient, initializeAuth]);
 
   useEffect(() => {
     let mounted = true;
@@ -154,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 5000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, currentSession) => {
         if (!mounted) return;
         
         console.log("Auth event:", event);
@@ -165,10 +166,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(null);
           queryClient.clear();
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            await fetchUserRole(session.user.id);
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          if (currentSession?.user) {
+            await fetchUserRole(currentSession.user.id);
           }
         }
         
@@ -176,25 +177,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        // Warm the connection: Proactively refresh session to prevent background timeout
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          // Silent re-sync of active data
-          queryClient.invalidateQueries({ type: 'active', stale: true });
-        }
-      }
-    };
-
-    window.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [queryClient]);
+  }, [queryClient, initializeAuth, fetchUserRole]);
 
   useEffect(() => {
     if (!user) return;
@@ -229,7 +216,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       authChanges.unsubscribe();
     };
-  }, [user?.id, role, queryClient, toast]);
+  }, [user, user?.id, role, queryClient, toast]);
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          // Robust recovery: Re-sync session from storage without full invalidation flood
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+            // Proactively check for Realtime connection health
+            supabase.getChannels().forEach(channel => {
+              if (channel.state === 'closed' || channel.state === 'errored') {
+                channel.subscribe();
+              }
+            });
+          }
+        } catch (err) {
+          console.error("Focus recovery error:", err);
+        }
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => window.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   const signUp = async (email: string, password: string, username?: string) => {
     const redirectUrl = `${window.location.origin}/`;

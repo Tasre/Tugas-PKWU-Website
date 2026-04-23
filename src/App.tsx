@@ -24,11 +24,12 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000, // Data stays fresh for 1 minute
-      gcTime: 5 * 60 * 1000, // Cache persists for 5 minutes
+      staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
+      gcTime: 10 * 60 * 1000, // Cache persists for 10 minutes
       refetchOnWindowFocus: true, // Wake up connection on return
       refetchOnReconnect: true,   // Auto-heal on network blips
       retry: 1, 
+      refetchIntervalInBackground: false, // STOP background polling
     },
   },
 });
