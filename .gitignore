@@ -16,7 +16,6 @@ dist-ssr
 !.env.example
 
 # Supabase
-supabase/migrations/
 supabase/.temp/
 supabase/functions/.import_map.json
 .vscode/*
